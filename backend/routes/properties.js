@@ -2,6 +2,26 @@ const express = require('express');
 const router = express.Router();
 const Property = require('../models/Property');
 const auth = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+
+// Configure multer for image upload
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+// Upload image endpoint
+router.post('/upload', auth, upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ msg: 'No file uploaded' });
+  const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  res.json({ url: imageUrl });
+});
 
 // Get all properties (with optional filters)
 router.get('/', async (req, res) => {
@@ -46,7 +66,7 @@ router.post('/', auth, async (req, res) => {
 // Get single property
 router.get('/:id', async (req, res) => {
   try {
-    const property = await Property.findById(req.params.id).populate('owner', 'name email');
+    const property = await Property.findById(req.params.id).populate('owner', 'name email_id');
     if (!property) return res.status(404).json({ msg: 'Property not found' });
     res.json(property);
   } catch (err) {
